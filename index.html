@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diákcsoport-kezelő – keverés • csoportosítás • sorsolás</title>
+  <style>
+    :root{
+      --bg:#0f172a;           /* slate-900 */
+      --panel:#111827;        /* gray-900 */
+      --muted:#94a3b8;        /* slate-400 */
+      --text:#e5e7eb;         /* gray-200 */
+      --accent:#22d3ee;       /* cyan-400 */
+      --accent-2:#38bdf8;     /* sky-400 */
+      --ok:#4ade80;           /* green-400 */
+      --warn:#fbbf24;         /* amber-400 */
+      --danger:#fb7185;       /* rose-400 */
+      --card:#0b1222;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #0ea5e966, transparent),
+                  radial-gradient(900px 500px at -10% 120%, #22d3ee33, transparent),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:28px 20px 10px; text-align:center;
+    }
+    h1{font-weight:800; letter-spacing:.2px; margin:0 0 6px; font-size:clamp(20px,3.5vw,32px)}
+    .sub{color:var(--muted); font-size:14px}
+
+    .wrap{max-width:1100px; margin:20px auto 60px; padding:0 16px;}
+
+    .grid{
+      display:grid; gap:18px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 960px){
+      .grid{grid-template-columns: 1.05fr .95fr}
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .card .head{display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.06)}
+    .card .head h2{margin:0; font-size:16px; letter-spacing:.3px}
+    .card .body{padding:18px}
+
+    textarea{
+      width:100%; min-height:220px; resize:vertical; border-radius:14px; padding:14px 14px 40px; border:1px solid rgba(255,255,255,.08);
+      background:rgba(3,7,18,.6); color:var(--text); outline:none; font-size:15px; line-height:1.5;
+    }
+    .hint{margin-top:8px; color:var(--muted); font-size:12px}
+
+    .toolbar{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
+    .btn{
+      appearance:none; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; font-weight:600; letter-spacing:.2px; color:#0b1222;
+      background:linear-gradient(180deg, var(--accent), var(--accent-2));
+      box-shadow: 0 8px 18px rgba(34,211,238,.25);
+    }
+    .btn.secondary{ background:linear-gradient(180deg, #cbd5e1, #94a3b8); color:#0b1222 }
+    .btn.ghost{ background:transparent; color:var(--text); border:1px dashed rgba(255,255,255,.18)}
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+
+    .options{display:flex; flex-wrap:wrap; gap:14px; align-items:end; margin-top:14px}
+    .opt{display:flex; flex-direction:column; gap:6px}
+    .opt label{font-size:12px; color:var(--muted)}
+    .opt input[type="number"], .opt input[type="text"], .opt select{
+      background:rgba(3,7,18,.6); color:var(--text); border:1px solid rgba(255,255,255,.08);
+      border-radius:10px; padding:10px 12px; width:150px; outline:none;
+    }
+
+    .result{margin-top:16px}
+    .result h3{margin:0 0 10px; font-size:15px; color:var(--muted)}
+
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; font-size:12px; border-radius:999px; border:1px solid rgba(255,255,255,.1); color:var(--muted)}
+
+    .list{display:flex; flex-wrap:wrap; gap:8px}
+    .tag{
+      padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); font-size:14px
+    }
+
+    .groups{ display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); margin-top:12px }
+    .group{
+      background: linear-gradient(180deg, rgba(56,189,248,.08), rgba(56,189,248,.02));
+      border:1px solid rgba(56,189,248,.25);
+      border-radius:14px; padding:12px; min-height:64px
+    }
+    .group h4{margin:0 0 8px; font-size:14px; color:#c7d2fe}
+    .group ul{margin:0; padding-left:18px}
+
+    .draw{font-size:18px; font-weight:800; letter-spacing:.3px; margin-top:8px}
+    .draw small{display:block; color:var(--muted); font-weight:500; font-size:12px}
+
+    footer{opacity:.8; color:var(--muted); text-align:center; padding:30px 10px; font-size:12px}
+    a.link{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Diákcsoport-kezelő</h1>
+    <div class="sub">Keverés • véletlen csoportosítás • sorsolás – minden egy fájlban</div>
+  </header>
+
+  <div class="wrap grid">
+    <!-- BAL: Névlista -->
+    <section class="card">
+      <div class="head">
+        <h2>1) Add meg a neveket</h2>
+        <span class="pill" id="countPill">0 név</span>
+      </div>
+      <div class="body">
+        <textarea id="names" placeholder="Egy név soronként (Enter).\nPl.:\nKata\nBence\nZsófi\n…\n\nVAGY: vesszővel/pointsorosan is lehet: Kata, Bence; Zsófi"></textarea>
+        <div class="hint">Tipp: Illessz be listát a naplóból / táblázatból. Üres sorok automatikusan törlődnek.</div>
+
+        <div class="toolbar">
+          <button class="btn" id="shuffleBtn">Keverés (random sorrend)</button>
+          <button class="btn secondary" id="clearBtn">Lista törlése</button>
+          <button class="btn ghost" id="sampleBtn">Minta betöltése</button>
+        </div>
+
+        <div class="result" id="shuffleResult" hidden>
+          <h3>Véletlen sorrend:</h3>
+          <div class="list" id="orderedList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JOBB: Műveletek -->
+    <section class="card">
+      <div class="head">
+        <h2>2) Véletlen csoportok & sorsolás</h2>
+      </div>
+      <div class="body">
+        <!-- Csoportosítás -->
+        <div class="options">
+          <div class="opt">
+            <label>Csoportosítás módja</label>
+            <select id="groupMode">
+              <option value="size">Csoportméret szerint</option>
+              <option value="count">Csoportok száma szerint</option>
+            </select>
+          </div>
+          <div class="opt" id="sizeWrap">
+            <label>Csoportméret</label>
+            <input type="number" id="groupSize" min="2" value="3" />
+          </div>
+          <div class="opt" id="countWrap" style="display:none">
+            <label>Csoportok száma</label>
+            <input type="number" id="groupCount" min="2" value="4" />
+          </div>
+          <div class="opt">
+            <label>&nbsp;</label>
+            <button class="btn" id="groupBtn">Random csoportok</button>
+          </div>
+        </div>
+        <div class="result" id="groupsResult" hidden>
+          <h3>Eredmény:</h3>
+          <div class="groups" id="groups"></div>
+        </div>
+
+        <hr style="margin:18px 0; border:none; border-top:1px solid rgba(255,255,255,.10)" />
+
+        <!-- Sorsolás -->
+        <div class="options">
+          <div class="opt">
+            <label>Sorsolás</label>
+            <button class="btn" id="drawBtn">Véletlen tanuló kiválasztása</button>
+          </div>
+          <div class="opt">
+            <label><input type="checkbox" id="noRepeat" /> Ismétlés nélkül</label>
+          </div>
+          <div class="opt">
+            <label>&nbsp;</label>
+            <button class="btn secondary" id="resetDrawBtn" title="Sorsolási előzmények törlése">Sorsolás visszaállítása</button>
+          </div>
+        </div>
+        <div class="result" id="drawResult" hidden>
+          <h3>Kisorsolt tanuló:</h3>
+          <div class="draw" id="drawName">–</div>
+          <small id="drawLeft"></small>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    Készült tanórai használatra. Minden adat helyben, a böngészőben marad. 
+  </footer>
+
+  <script>
+    // ======= Segédfüggvények =======
+    const $ = (sel) => document.querySelector(sel);
+
+    function parseNames(raw){
+      if(!raw) return [];
+      // Elsősorban sorelválasztó, de támogat: vessző, pontosvessző, tab
+      const parts = raw
+        .replace(/\r/g, "\n")
+        .split(/\n|,|;|\t/g)
+        .map(s => s.trim())
+        .filter(Boolean);
+      // Duplikátumok kiszűrése, de eredeti sorrend megtartása
+      const seen = new Set();
+      const out = [];
+      for(const name of parts){
+        const key = name.toLowerCase();
+        if(!seen.has(key)){
+          seen.add(key);
+          out.push(name);
+        }
+      }
+      return out;
+    }
+
+    function updateCount(){
+      const names = parseNames($('#names').value);
+      $('#countPill').textContent = `${names.length} név`;
+      return names;
+    }
+
+    function shuffle(arr){
+      // Kriptográfiai keverés (Fisher–Yates + crypto)
+      const a = arr.slice();
+      for(let i=a.length-1; i>0; i--){
+        const r = new Uint32Array(1); crypto.getRandomValues(r);
+        const j = r[0] % (i+1);
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function renderTags(listEl, items){
+      listEl.innerHTML = '';
+      items.forEach(n => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = n;
+        listEl.appendChild(span);
+      });
+    }
+
+    // ======= Állapot sorsoláshoz (ismétlés nélkül) =======
+    let drawPool = []; // maradék nevek
+
+    function resetDrawPool(names){
+      drawPool = names.slice();
+      $('#drawLeft').textContent = drawPool.length ? `${drawPool.length} név a kalapban` : '';
+    }
+
+    // ======= Eseménykezelők =======
+    $('#names').addEventListener('input', () => {
+      const names = updateCount();
+      // Ha a sorsolás ismétlés nélkül aktív, igazítsuk a poolt
+      if($('#noRepeat').checked){
+        resetDrawPool(names);
+      }
+    });
+
+    $('#sampleBtn').addEventListener('click', () => {
+      $('#names').value = ['Kata','Bence','Zsófi','Levente','Emma','Márk','Luca','Áron','Noémi','Dániel','Máté','Lili','Gergő','Nóra'].join('\n');
+      updateCount();
+      if($('#noRepeat').checked) resetDrawPool(parseNames($('#names').value));
+    });
+
+    $('#clearBtn').addEventListener('click', () => {
+      $('#names').value = '';
+      updateCount();
+      $('#orderedList').innerHTML='';
+      $('#shuffleResult').hidden = true;
+      $('#groups').innerHTML='';
+      $('#groupsResult').hidden = true;
+      $('#drawResult').hidden = true;
+      drawPool = [];
+    });
+
+    // Keverés
+    $('#shuffleBtn').addEventListener('click', () => {
+      const names = updateCount();
+      if(names.length < 2){
+        alert('Adj meg legalább 2 nevet a keveréshez.');
+        return;
+      }
+      const mixed = shuffle(names);
+      renderTags($('#orderedList'), mixed);
+      $('#shuffleResult').hidden = false;
+    });
+
+    // Csoportosítás UI mód váltás
+    $('#groupMode').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      $('#sizeWrap').style.display = mode === 'size' ? '' : 'none';
+      $('#countWrap').style.display = mode === 'count' ? '' : 'none';
+    });
+
+    // Csoportosítás
+    $('#groupBtn').addEventListener('click', () => {
+      const names = updateCount();
+      if(names.length < 2){
+        alert('Adj meg legalább 2 nevet a csoportosításhoz.');
+        return;
+      }
+      const shuffled = shuffle(names);
+
+      let groups = [];
+      const mode = $('#groupMode').value;
+      if(mode === 'size'){
+        const size = Math.max(2, parseInt($('#groupSize').value || '0', 10));
+        if(size > shuffled.length){
+          alert('A csoportméret nem lehet nagyobb a nevek számánál.');
+          return;
+        }
+        for(let i=0; i<shuffled.length; i+=size){
+          groups.push(shuffled.slice(i, i+size));
+        }
+      } else {
+        const count = Math.max(2, parseInt($('#groupCount').value || '0', 10));
+        if(count > shuffled.length){
+          alert('A csoportok száma nem lehet nagyobb a nevek számánál.');
+          return;
+        }
+        groups = Array.from({length: count}, () => []);
+        // Körbeosztás, hogy kiegyenlítettek legyenek a csoportok
+        shuffled.forEach((name, idx) => {
+          groups[idx % count].push(name);
+        });
+      }
+
+      // Megjelenítés
+      const wrap = $('#groups');
+      wrap.innerHTML = '';
+      groups.forEach((g, i) => {
+        const div = document.createElement('div');
+        div.className = 'group';
+        const title = document.createElement('h4');
+        title.textContent = `Csoport ${i+1}`;
+        const ul = document.createElement('ul');
+        g.forEach(n => {
+          const li = document.createElement('li');
+          li.textContent = n; ul.appendChild(li);
+        });
+        div.appendChild(title); div.appendChild(ul);
+        wrap.appendChild(div);
+      });
+      $('#groupsResult').hidden = false;
+    });
+
+    // Sorsolás
+    $('#noRepeat').addEventListener('change', (e) => {
+      const names = updateCount();
+      if(e.target.checked){
+        resetDrawPool(names);
+      } else {
+        drawPool = []; // engedjük az ismétlést
+        $('#drawLeft').textContent = '';
+      }
+    });
+
+    $('#resetDrawBtn').addEventListener('click', () => {
+      resetDrawPool(parseNames($('#names').value));
+      $('#drawResult').hidden = true;
+    });
+
+    $('#drawBtn').addEventListener('click', () => {
+      const names = parseNames($('#names').value);
+      if(names.length === 0){
+        alert('Adj meg legalább 1 nevet a sorsoláshoz.');
+        return;
+      }
+      let pool = names;
+      if($('#noRepeat').checked){
+        if(drawPool.length === 0){
+          alert('Minden nevet kisorsoltunk. Állítsd vissza a sorsolást, vagy kapcsold ki az "Ismétlés nélkül" módot.');
+          return;
+        }
+        pool = drawPool;
+      }
+      const idx = Math.floor(Math.random() * pool.length);
+      const picked = pool[idx];
+
+      if($('#noRepeat').checked){
+        // vedd ki a poolból
+        pool.splice(idx,1);
+        drawPool = pool;
+        $('#drawLeft').textContent = `${drawPool.length} maradt a kalapban`;
+      }
+
+      $('#drawName').textContent = picked;
+      $('#drawResult').hidden = false;
+    });
+
+    // Inicializáció
+    updateCount();
+  </script>
+</body>
+</html>
